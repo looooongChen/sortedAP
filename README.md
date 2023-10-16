@@ -20,7 +20,7 @@ Designing metrics for evaluating instance segmentation revolves around comprehen
 **Equality.** Without any assumed importance of different objects, all objects should have an equal influence on the metric score. A common case of inequality is that the score is biased towards larger objects. Although larger objects may be prioritized in some applications, as a general metric, the metric should treat all objects equally. Analysis with respect to object size can be easily performed by evaluating different size groups using a metric of equal property.
 
 <p align="center">
-<img src="./doc/deficiencies.png" width="600">
+<img src="./doc/deficiencies.png" width="800">
 <p>
 
 ### sortedAP
@@ -35,6 +35,61 @@ from 0 to 1 will turn all matches into non-matches one by one in the ascending o
 ## Usage
 
 ### Dependency
+- python=3.x
+- scipy
+
+### Supported metrics
+
+- AJI: [aggregated Jaccard index](https://ieeexplore.ieee.org/document/7872382)
+- SBD: [Symmetric Best Dice](https://link.springer.com/article/10.1007/s00138-015-0737-3)
+- mAP: [mean Average Precision](https://www.kaggle.com/c/data-science-bowl-2018/overview/evaluation)
+- PQ: [Panoptic Quality](https://arxiv.org/abs/1801.00868)
+- sortedAP: our proposed metric
+
+
+### Bais Example
+
+
+```python
+
+from evluation import Evaluator
+
+e = Evaluator(dimension=2, allow_overlap=True, match_method='hungarian', image_average=False)
+
+### example of evaluating segmented cells ###
+
+cell_gt = read_indexed_png('./demo/cells_gt.png')
+cell_pred = read_indexed_png('./demo/cells_pred.png')
+
+e.add_example(cell_pred, cell_gt)
+
+e.AJI() # aggregated Jaccard index
+e.SBD() # Symmetric Best Dice
+e.PQ(thres=0.5) # Panoptic Quality
+e.mAP(thres=None) # mean Average Precision, default thres ranges from 0.5 to 0.95 with a step size of 0.05
+e.sortedAP() # sortedAP
+
+
+### example of segmented leaves ####
+
+e.clear() # clear the added cell example
+
+for f in os.listdir('./demo/CVPPP_leaves'):
+    gt = read_indexed_png(os.path.join('./demo/CVPPP_leaves', f, 'gt.png'))
+    pred = read_indexed_png(os.path.join('./demo/CVPPP_leaves', f, 'pred.png'))
+    e.add_example(pred, gt)
+
+# aps contain pairs of (jac, ap), sorted in jac(IoU) increasing order
+scores, aps = e.sortedAP()
+
+# plot the complete AP curve
+aps = np.array(aps)
+plt.plot(aps[:,0], aps[:,1])
+plt.xlabel("Jaccard Index (IoU)")
+plt.ylabel('AP (Average Precision)')
+plt.show()
+
+```
 
 ## How to cite
 ```bibtex

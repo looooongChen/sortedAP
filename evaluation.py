@@ -1,6 +1,4 @@
 import numpy as np
-from scipy.spatial import distance_matrix
-from skimage.measure import regionprops
 from scipy.optimize import linear_sum_assignment
 import inspect
 
@@ -8,7 +6,6 @@ import inspect
 Author: Long Chen
 Support:
     - higher dimensional data
-    - evaluation in 'area' mode and 'curve' mode
     - input as label map or stacked binary maps
     - matrics: 
         - averagePrecision, aggregatedPricision
@@ -42,26 +39,22 @@ class Sample(object):
     class for evaluating a singe prediction-gt pair
     """
 
-    def __init__(self, pd, gt, dimension=2, mode='area', tolerance=3, allow_overlap=False, match_method='hungarian'):
+    def __init__(self, pd, gt, dimension=2, tolerance=3, allow_overlap=False, match_method='hungarian'):
 
         '''
         Args:
             pd: numpy array of dimension D or D+1/list of dimension D
             gt: numpy array of dimension D or D+1/list of dimension D
             dimension: dimension D of the image / ground truth
-            mode: 'area' / 'centroid' / 'curve', evaluate area / centroid indicated position / curve
-            tolerance: int, shift tolerance, only valid when mode='centroid' / 'curve'
             allow_overlap: if there is no overlap in pd, set to False to save computational cost
             match_method: method used for matching
         Note:
-            D + 1 is not supported in 'centroid' mode
             pd/gt can be giveb by:
                 - a label map of dimension D, with 0 indicating the background
                 - a binary map of demension (D+1) with each instance occupying one channel of the first dimension
             The binary map costs more memory, but can handle overlapped object. If objects are not overlapped, use the label map to save memory and accelarate the computation.
         '''
         self.ndim = dimension
-        self.mode = mode
         self.tolerance = tolerance
         self.allow_overlap = allow_overlap
         self.match_method = match_method
@@ -227,7 +220,7 @@ class Sample(object):
         else:
             return 1, 0, 0
 
-    def P_DSB(self, thres=0.5):
+    def AP(self, thres=0.5):
         '''
         the precision based on Data Scient Bowl 2018 definition: https://www.kaggle.com/c/data-science-bowl-2018/overview/evaluation
         '''
@@ -239,12 +232,12 @@ class Sample(object):
         else: 
             return 1, 0, 0
 
-    def AP_DSB(self, thres=None):
+    def mAP(self, thres=None):
         '''
         average precision based on Data Scient Bowl 2018 definition: https://www.kaggle.com/c/data-science-bowl-2018/overview/evaluation
         '''
         thres = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95] if thres is None else thres
-        ps = [self.P_DSB(thres=t)[0] for t in thres]
+        ps = [self.AP(thres=t)[0] for t in thres]
         return np.mean(ps)
         
     def RQ(self, thres=0.5):
@@ -393,10 +386,9 @@ def evaluator_decorator(metric_name):
 class Evaluator(object):
 
 
-    def __init__(self, dimension=2, mode='area', tolerance=3, allow_overlap=False, match_method='hungarian', image_average=False):
+    def __init__(self, dimension=2, tolerance=3, allow_overlap=False, match_method='hungarian', image_average=False):
 
         self.ndim = dimension
-        self.mode = mode
         self.tolerance = tolerance
         self.allow_overlap = allow_overlap
         self.match_method = match_method
@@ -405,7 +397,7 @@ class Evaluator(object):
         self.examples = []
 
     def add_example(self, pred, gt, verbose=True):
-        e = Sample(pred, gt, dimension=self.ndim, mode=self.mode, tolerance=self.tolerance, allow_overlap=self.allow_overlap, match_method=self.match_method)
+        e = Sample(pred, gt, dimension=self.ndim, tolerance=self.tolerance, allow_overlap=self.allow_overlap, match_method=self.match_method)
         self.examples.append(e)
         if verbose:
             print("example added, total: ", len(self.examples))
@@ -476,14 +468,14 @@ class Evaluator(object):
         # print('precision', N_match, N_pd)
         return N_match/N_pd
 
-    @evaluator_decorator('P_DSB')
-    def P_DSB(self, thres=0.5, verbose=True):
+    @evaluator_decorator('AP')
+    def AP(self, thres=0.5, verbose=True):
         '''
         the precision based on Data Scient Bowl 2018 definition: https://www.kaggle.com/c/data-science-bowl-2018/overview/evaluation
         '''
         N_inter, N_union = 0, 0
         for e in self.examples:
-            _, N_inter_i, N_union_i = e.P_DSB(thres=thres)
+            _, N_inter_i, N_union_i = e.AP(thres=thres)
             N_inter += N_inter_i
             N_union += N_union_i
         # print('ap', N_inter, N_union)
@@ -491,15 +483,15 @@ class Evaluator(object):
         # print(N_inter, N_union)
         return p
 
-    def AP_DSB(self, thres=None, verbose=True):
+    def mAP(self, thres=None, verbose=True):
         '''
         average precision based on Data Scient Bowl 2018 definition: https://www.kaggle.com/c/data-science-bowl-2018/overview/evaluation
         '''
         thres = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95] if thres is None else thres
-        ps = [self.P_DSB(thres=t, verbose=False) for t in thres]
+        ps = [self.AP(thres=t, verbose=False) for t in thres]
         ap = np.mean(ps)
         if verbose:
-            print('AP_DSB: {}, image average: {}'.format(ap, self.image_average))
+            print('mAP: {}, image average: {}'.format(ap, self.image_average))
         return ap
 
     @evaluator_decorator('RQ')
