@@ -4,7 +4,7 @@
 
 This repository contains the implementation of sortedAP, a new evaluation metric for instance segmentation. The metric is described in the papers:
 
-- Long Chen, Martin Strauch and Dorit Merhof. 
+- Long Chen, Yuli Wu, Johannes Stegmaier, Dorit Merhof. 
 [*SortedAP: Rethinking evaluation metrics for instance segmentation*](https://openaccess.thecvf.com/content/ICCV2023W/BIC/html/Chen_SortedAP_Rethinking_Evaluation_Metrics_for_Instance_Segmentation_ICCVW_2023_paper.html)
 International Conference on Computer Vision (ICCV) Workshops, Paris, France, Oct. 2023.
 
